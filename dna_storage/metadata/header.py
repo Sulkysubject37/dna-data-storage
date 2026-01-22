@@ -10,7 +10,7 @@ HEADER_LENGTH_BYTES = 4 # 32-bit integer for header length
 
 class MetadataManager:
     @staticmethod
-    def create_header_dna(ecc_method, ecc_params):
+    def create_header_dna(ecc_method, ecc_params, chunk_size, total_chunks):
         """
         Creates the DNA sequence for the header.
         """
@@ -18,7 +18,9 @@ class MetadataManager:
             "version": "1.0",
             "encoding": "binary_map_2bit",
             "ecc": ecc_method,
-            "ecc_params": ecc_params
+            "ecc_params": ecc_params,
+            "chunk_size": chunk_size,
+            "total_chunks": total_chunks
         }
         json_bytes = json.dumps(metadata, sort_keys=True).encode('utf-8')
         
@@ -26,9 +28,6 @@ class MetadataManager:
         try:
             encoded_bytes = ECC.rs_encode(json_bytes, HEADER_ECC_NSYM)
         except Exception as e:
-            # Fallback or re-raise? 
-            # If header encoding fails (e.g. too small for RS?), we might need padding?
-            # RS works on small data too usually.
             raise RuntimeError(f"Failed to encode header: {e}")
 
         binary = bytes_to_binary(encoded_bytes)
@@ -50,21 +49,13 @@ class MetadataManager:
 
     @staticmethod
     def encode_length_prefix(length):
-        """
-        Encodes an integer length into a fixed-width DNA sequence (16 bases for 32-bit int).
-        """
         length_bytes = length.to_bytes(HEADER_LENGTH_BYTES, byteorder='big')
         binary = bytes_to_binary(length_bytes)
         return binary_to_dna_sequence(binary)
 
     @staticmethod
     def decode_length_prefix(dna_prefix):
-        """
-        Decodes the fixed-width DNA sequence into an integer length.
-        """
-        if len(dna_prefix) != HEADER_LENGTH_BYTES * 4: # 4 bases per byte ? No, 4 bases = 8 bits? No.
-            # 1 byte = 8 bits = 4 bases (00 00 00 00).
-            # 4 bytes = 16 bases.
+        if len(dna_prefix) != HEADER_LENGTH_BYTES * 4:
             raise ValueError("Invalid length prefix size")
             
         binary = dna_sequence_to_binary(dna_prefix)

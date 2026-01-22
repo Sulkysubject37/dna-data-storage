@@ -1,4 +1,5 @@
 import reedsolo
+import math
 from .hamming import hamming_encode as h_encode, hamming_decode as h_decode
 
 class ECC:
@@ -24,8 +25,6 @@ class ECC:
         """
         bits = [int(c) for c in encoded_bits_str]
         decoded_bits, corrected = h_decode(bits)
-        # Note: We are currently ignoring the 'corrected' flag in the return value for compatibility,
-        # but the underlying decoder performed the correction.
         return ''.join(str(b) for b in decoded_bits)
 
     @staticmethod
@@ -37,3 +36,20 @@ class ECC:
     def rs_decode(encoded_bytes, nsym=10):
         rs = reedsolo.RSCodec(nsym)
         return rs.decode(encoded_bytes)[0]
+
+    @staticmethod
+    def calculate_encoded_length(data_bytes_len, method, params):
+        if method == 'rs':
+            nsym = params.get('nsym', 10)
+            return data_bytes_len + nsym
+        elif method == 'hamming':
+            # Input bits
+            bits = data_bytes_len * 8
+            # Blocks (4 bits per block)
+            blocks = math.ceil(bits / 4)
+            # Output bits (7 bits per block)
+            out_bits = blocks * 7
+            # Output bytes (ceil(out_bits / 8))
+            return math.ceil(out_bits / 8)
+        else:
+            return data_bytes_len

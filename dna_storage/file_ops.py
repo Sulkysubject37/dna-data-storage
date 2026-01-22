@@ -1,18 +1,19 @@
 from .binary_to_dna import bytes_to_binary, binary_to_dna_sequence, dna_sequence_to_binary, binary_to_bytes
 from .ecc import ECC
 from .metadata import MetadataManager
+from .chunking import ChunkManager
 
 class DNAStorage:
-    def __init__(self, ecc_method='rs', nsym=10):
+    def __init__(self, ecc_method='rs', nsym=10, chunk_size=128):
         self.ecc_method = ecc_method
         self.nsym = nsym
+        self.chunk_size = chunk_size
         
     def _encode_body(self, data_bytes):
-        """Internal method to encode data body."""
+        """Internal method to encode a single data packet."""
         # Error Correction
         if self.ecc_method == 'rs':
             encoded_bytes = ECC.rs_encode(data_bytes, self.nsym)
-            # Convert to DNA
             binary = bytes_to_binary(encoded_bytes)
             return binary_to_dna_sequence(binary)
         elif self.ecc_method == 'hamming':
@@ -20,12 +21,11 @@ class DNAStorage:
             encoded_bits = ECC.hamming_encode(binary)
             return binary_to_dna_sequence(encoded_bits)
         else:
-            # No ECC
             binary = bytes_to_binary(data_bytes)
             return binary_to_dna_sequence(binary)
 
     def _decode_body(self, dna_sequence):
-        """Internal method to decode data body."""
+        """Internal method to decode a single data packet."""
         binary = dna_sequence_to_binary(dna_sequence)
         
         if self.ecc_method == 'rs':
@@ -37,29 +37,44 @@ class DNAStorage:
         else:
             return binary_to_bytes(binary)
 
+    def _calculate_dna_chunk_length(self, packet_size_bytes):
+        if self.ecc_method == 'rs':
+             return (packet_size_bytes + self.nsym) * 4
+        elif self.ecc_method == 'hamming':
+             # 1 byte -> 14 bits -> 7 bases
+             return packet_size_bytes * 7
+        else:
+             return packet_size_bytes * 4
+
     def encode(self, data_bytes):
         """
-        Encodes data with a metadata header.
-        Structure: [LengthPrefix(16 bases)][HeaderDNA][BodyDNA]
+        Encodes data with chunking and metadata header.
+        Structure: [LengthPrefix][HeaderDNA][Chunk1DNA][Chunk2DNA]...
         """
-        # 1. Encode Body
-        body_dna = self._encode_body(data_bytes)
+        # 1. Chunk Data
+        chunks = ChunkManager.chunk_data(data_bytes, self.chunk_size)
         
-        # 2. Create Header
+        # 2. Encode Chunks
+        encoded_chunks = [self._encode_body(chunk) for chunk in chunks]
+        body_dna = "".join(encoded_chunks)
+        
+        # 3. Create Header
         ecc_params = {"nsym": self.nsym} if self.ecc_method == 'rs' else {}
-        header_dna = MetadataManager.create_header_dna(self.ecc_method, ecc_params)
+        header_dna = MetadataManager.create_header_dna(
+            self.ecc_method, ecc_params, self.chunk_size, len(chunks)
+        )
         
-        # 3. Create Prefix
+        # 4. Create Prefix
         prefix_dna = MetadataManager.encode_length_prefix(len(header_dna))
         
         return prefix_dna + header_dna + body_dna
 
     def decode(self, dna_sequence):
         """
-        Decodes data, parsing the metadata header to determine settings.
+        Decodes data, parsing header and reassembling chunks.
         """
         # 1. Parse Prefix
-        prefix_len = 16 # 4 bytes * 4 bases/byte
+        prefix_len = 16 
         if len(dna_sequence) < prefix_len:
             raise ValueError("Data too short to contain header prefix")
             
@@ -75,12 +90,36 @@ class DNAStorage:
         metadata = MetadataManager.parse_header_dna(header_dna)
         
         # 3. Configure from Metadata
-        # Update instance state to match the file's settings
         self.ecc_method = metadata.get('ecc', 'rs')
         params = metadata.get('ecc_params', {})
         if self.ecc_method == 'rs':
             self.nsym = params.get('nsym', 10)
-            
-        # 4. Decode Body
+        self.chunk_size = metadata.get('chunk_size', 128)
+        total_chunks = metadata.get('total_chunks', 0)
+        
+        # 4. Decode Chunks
         body_dna = dna_sequence[total_header_end:]
-        return self._decode_body(body_dna)
+        
+        # Packet size = Header(12) + chunk_size (padded)
+        packet_size = 12 + self.chunk_size
+        chunk_dna_len = self._calculate_dna_chunk_length(packet_size)
+        
+        chunks_data = []
+        for i in range(total_chunks):
+            start = i * chunk_dna_len
+            end = start + chunk_dna_len
+            
+            if end > len(body_dna):
+                raise ValueError("Unexpected end of stream (missing chunks)")
+            
+            chunk_segment = body_dna[start:end]
+            packet_bytes = self._decode_body(chunk_segment)
+            
+            idx, data = ChunkManager.parse_chunk(packet_bytes)
+            
+            if idx != i:
+                raise ValueError(f"Chunk index mismatch. Expected {i}, got {idx}")
+                
+            chunks_data.append(data)
+            
+        return b"".join(chunks_data)
