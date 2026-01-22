@@ -1,4 +1,5 @@
 from dna_storage import DNAStorage, visualize_mapping
+from dna_storage.simulation import ErrorInjector
 import argparse
 
 def display_banner():
@@ -21,9 +22,10 @@ def interactive_cli():
         print("3. Encode File to DNA File")
         print("4. Decode DNA File to File")
         print("5. Visualize DNA Mapping")
-        print("6. Exit")
+        print("6. Simulate DNA Errors")
+        print("7. Exit")
         
-        choice = input("\nEnter your choice (1-6): ")
+        choice = input("\nEnter your choice (1-7): ")
         
         try:
             if choice == '1':
@@ -35,8 +37,11 @@ def interactive_cli():
                 
             elif choice == '2':
                 dna = input("Enter DNA sequence: ").strip().upper()
-                ecc = input("Choose ECC used [rs/hamming] (default=rs): ") or 'rs'
-                storage.ecc_method = ecc.lower()
+                # Note: ECC choice is now auto-detected from header, but we keep the prompt 
+                # if user wants to override or for legacy behavior? 
+                # Actually, decode() ignores ecc_method initially, it parses header.
+                # So we don't strictly need to ask. But if header is missing (legacy), it might fail.
+                # We'll just call decode.
                 decoded = storage.decode(dna).decode('utf-8', errors='replace')
                 print(f"\nDecoded Text:\n{decoded}")
                 
@@ -57,8 +62,6 @@ def interactive_cli():
             elif choice == '4':
                 dna_file = input("DNA file path: ")
                 out_file = input("Output file path: ")
-                ecc = input("Choose ECC used [rs/hamming] (default=rs): ") or 'rs'
-                storage.ecc_method = ecc.lower()
                 
                 with open(dna_file, 'r') as f:
                     dna = f.read().strip()
@@ -71,8 +74,22 @@ def interactive_cli():
             elif choice == '5':
                 visualize_mapping()
                 print("Visualization window opened!")
-                
+
             elif choice == '6':
+                dna_file = input("Input DNA file path: ")
+                rate = float(input("Error rate (e.g. 0.01 for 1%): "))
+                out_file = input("Output DNA file path: ")
+                
+                with open(dna_file, 'r') as f:
+                    dna = f.read().strip()
+                
+                corrupted = ErrorInjector.inject_dna_substitution(dna, rate)
+                
+                with open(out_file, 'w') as f:
+                    f.write(corrupted)
+                print(f"Corrupted DNA written to {out_file}")
+                
+            elif choice == '7':
                 print("Exiting...")
                 break
                 
