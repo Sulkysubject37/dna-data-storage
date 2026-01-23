@@ -28,7 +28,7 @@ class BenchmarkRunner:
         success = False
         
         # Run 3 times
-        for _ in range(3):
+        for i in range(3):
             # Encode
             start = time.perf_counter()
             encoded_dna = storage.encode(data)
@@ -44,7 +44,7 @@ class BenchmarkRunner:
             decode_times.append(end - start)
             
             if decoded_data != data:
-                print(f"FAILURE: {filename} - Content mismatch")
+                print(f"CRITICAL FAILURE: {filename} - Content mismatch on run {i+1}. Decoded len {len(decoded_data)} vs Original {len(data)}")
                 success = False
                 break
             else:
