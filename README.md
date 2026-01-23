@@ -52,6 +52,20 @@ Decode a file:
 python -m dna_storage.decode_file input.dna output.txt
 ```
 
+## Benchmarking
+
+This project includes a benchmarking harness to establish performance baselines.
+
+### Running Benchmarks
+Establishing a baseline for small files:
+```bash
+python -m dna_storage.benchmarks.run_baseline --tier small
+```
+
+### Baseline vs. Scaling
+- **Baseline Benchmarking**: Focuses on correctness and single-threaded performance using fixed parameters. These results are recorded in `dna_storage/benchmarks/results/` and serve as a pre-optimization reference.
+- **Scaling Experiments**: (Planned) Will focus on throughput, parallelization, and large-scale data handling.
+
 ## Testing
 Run unit tests:
 ```bash
