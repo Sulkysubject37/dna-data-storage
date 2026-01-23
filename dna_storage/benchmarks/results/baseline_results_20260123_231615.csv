@@ -1,0 +1,3 @@
+decode_time_median,dna_length,encode_time_median,extension,filename,size_bytes,success
+0.009471624973230064,13556,0.008290583034977317,.txt,"C-type lectin domain, ProtParam.txt",2613,True
+0.018481790961232036,26492,0.01633245899574831,.sh,init_reslik.sh,5270,True

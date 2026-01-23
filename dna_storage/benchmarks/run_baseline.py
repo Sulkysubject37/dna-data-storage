@@ -100,6 +100,30 @@ class BenchmarkRunner:
                 print(f"ERROR on {f}: {e}")
                 self.results.append({"filename": f, "success": False, "error": str(e)})
 
+    def save_results(self):
+        output_dir = os.path.join(os.path.dirname(__file__), 'results')
+        os.makedirs(output_dir, exist_ok=True)
+        
+        timestamp = time.strftime("%Y%m%d_%H%M%S")
+        json_path = os.path.join(output_dir, f'baseline_results_{timestamp}.json')
+        csv_path = os.path.join(output_dir, f'baseline_results_{timestamp}.csv')
+        
+        with open(json_path, 'w') as f:
+            json.dump(self.results, f, indent=2)
+            
+        if self.results:
+            keys = set()
+            for r in self.results:
+                keys.update(r.keys())
+            keys = sorted(list(keys))
+            
+            with open(csv_path, 'w', newline='') as f:
+                writer = csv.DictWriter(f, fieldnames=keys)
+                writer.writeheader()
+                writer.writerows(self.results)
+        
+        print(f"Results saved to {json_path}")
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--tier', choices=['small', 'large', 'all'], default='small', help='Baseline tier: small (<=1MB), large (>1MB), or all')
@@ -107,4 +131,5 @@ if __name__ == '__main__':
     
     runner = BenchmarkRunner()
     runner.run_all(args.tier)
+    runner.save_results()
     print(f"Completed {len(runner.results)} benchmarks.")

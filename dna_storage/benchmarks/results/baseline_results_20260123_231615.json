@@ -1,0 +1,20 @@
+[
+  {
+    "filename": "C-type lectin domain, ProtParam.txt",
+    "extension": ".txt",
+    "size_bytes": 2613,
+    "dna_length": 13556,
+    "encode_time_median": 0.008290583034977317,
+    "decode_time_median": 0.009471624973230064,
+    "success": true
+  },
+  {
+    "filename": "init_reslik.sh",
+    "extension": ".sh",
+    "size_bytes": 5270,
+    "dna_length": 26492,
+    "encode_time_median": 0.01633245899574831,
+    "decode_time_median": 0.018481790961232036,
+    "success": true
+  }
+]
