@@ -1,0 +1,6 @@
+decode_time_median,dna_length,encode_time_median,extension,filename,size_bytes,success
+0.00927737500751391,13556,0.008276708947960287,.txt,"C-type lectin domain, ProtParam.txt",2613,True
+19.808063750038855,29486088,17.349580832989886,.pdf,NL.pdf,6126809,True
+16.655541416956112,24799560,14.628727208997589,.png,"Still Life with Graphs and Pipettes – ChatGPT, 2025.png",5152921,True
+0.017690583015792072,26492,0.015695541980676353,.sh,init_reslik.sh,5270,True
+12.340350749960635,18367288,10.787788832967635,.mp3,you're a star.mp3,3816368,True

@@ -1,0 +1,47 @@
+[
+  {
+    "filename": "C-type lectin domain, ProtParam.txt",
+    "extension": ".txt",
+    "size_bytes": 2613,
+    "dna_length": 13556,
+    "encode_time_median": 0.008276708947960287,
+    "decode_time_median": 0.00927737500751391,
+    "success": true
+  },
+  {
+    "filename": "NL.pdf",
+    "extension": ".pdf",
+    "size_bytes": 6126809,
+    "dna_length": 29486088,
+    "encode_time_median": 17.349580832989886,
+    "decode_time_median": 19.808063750038855,
+    "success": true
+  },
+  {
+    "filename": "Still Life with Graphs and Pipettes \u2013 ChatGPT, 2025.png",
+    "extension": ".png",
+    "size_bytes": 5152921,
+    "dna_length": 24799560,
+    "encode_time_median": 14.628727208997589,
+    "decode_time_median": 16.655541416956112,
+    "success": true
+  },
+  {
+    "filename": "init_reslik.sh",
+    "extension": ".sh",
+    "size_bytes": 5270,
+    "dna_length": 26492,
+    "encode_time_median": 0.015695541980676353,
+    "decode_time_median": 0.017690583015792072,
+    "success": true
+  },
+  {
+    "filename": "you're a star.mp3",
+    "extension": ".mp3",
+    "size_bytes": 3816368,
+    "dna_length": 18367288,
+    "encode_time_median": 10.787788832967635,
+    "decode_time_median": 12.340350749960635,
+    "success": true
+  }
+]
