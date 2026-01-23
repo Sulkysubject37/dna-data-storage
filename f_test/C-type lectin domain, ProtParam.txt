@@ -1,0 +1,91 @@
+ProtParam - Results
+User-provided sequence:
+        10         20         30         40         50         60 
+MSDSKEPRVQ QLGLLEEDPT TSGIRLFPRD FQFQQIHGHK SSTGCLGHGA LVLQLLSFML 
+
+        70         80         90        100        110        120 
+LAGVLVAILV QVSKVPSSLS QEQSEQDAIY QNLTQLKAAV GELSEKSKLQ EIYQELTQLK 
+
+       130        140        150        160        170        180 
+AAVGELPEKS KLQEIYQELT RLKAAVGELP EKSKLQEIYQ ELTRLKAAVG ELPEKSKLQE 
+
+       190        200        210        220        230        240 
+IYQELTRLKA AVGELPEKSK LQEIYQELTE LKAAVGELPE KSKLQEIYQE LTQLKAAVGE 
+
+       250        260        270        280        290        300 
+LPDQSKQQQI YQELTDLKTA FERLCRHCPK DWTFFQGNCY FMSNSQRNWH DSVTACQEVR 
+
+       310        320        330        340        350        360 
+AQLVVIKTAE EQNFLQLQTS RSNRFSWMGL SDLNQEGTWQ WVDGSPLSPS FQRYWNSGEP 
+
+       370        380        390 
+NNSGNEDCAE FSGSGWNDNR CDVDNYWICK KPAACFRDE 
+
+[Documentation / Reference]
+Number of amino acids: 399
+Theoretical pI: 5.11
+Molecular weight: 45350.17
+
+Amino acid composition: 
+Ala (A)  25	  6.3%
+Arg (R)  15	  3.8%
+Asn (N)  14	  3.5%
+Asp (D)  15	  3.8%
+Cys (C)   9	  2.3%
+Gln (Q)  41	 10.3%
+Glu (E)  41	 10.3%
+Gly (G)  22	  5.5%
+His (H)   5	  1.3%
+Ile (I)  13	  3.3%
+Leu (L)  50	 12.5%
+Lys (K)  28	  7.0%
+Met (M)   4	  1.0%
+Phe (F)  13	  3.3%
+Pro (P)  15	  3.8%
+Ser (S)  33	  8.3%
+Thr (T)  17	  4.3%
+Trp (W)   8	  2.0%
+Tyr (Y)  11	  2.8%
+Val (V)  20	  5.0%
+Pyl (O)   0	  0.0%
+Sec (U)   0	  0.0%
+
+ (B)   0	  0.0%
+ (Z)   0	  0.0%
+ (X)   0	  0.0%
+
+Total number of negatively charged residues (Asp + Glu): 56
+Total number of positively charged residues (Arg + Lys): 43
+
+Atomic composition:
+Carbon      C	      2004
+Hydrogen    H	      3157
+Nitrogen    N	       545
+Oxygen      O	       628
+Sulfur      S	        13
+
+Formula: C2004H3157N545O628S13
+Total number of atoms: 6347
+
+Extinction coefficients:
+Extinction coefficients are in units of  M-1 cm-1, at 280 nm measured in water.
+Ext. coefficient    60890
+Abs 0.1% (=1 g/l)   1.343, assuming all pairs of Cys residues form cystines
+
+
+
+Ext. coefficient    60390
+Abs 0.1% (=1 g/l)   1.332, assuming all Cys residues are reduced
+
+Estimated half-life:
+The N-terminal of the sequence considered is M (Met).
+The estimated half-life is: 30 hours (mammalian reticulocytes, in vitro).
+                            >20 hours (yeast, in vivo).
+                            >10 hours (Escherichia coli, in vivo).
+
+Instability index:
+The instability index (II) is computed to be 50.42
+This classifies the protein as unstable.
+
+Aliphatic index: 82.38
+Grand average of hydropathicity (GRAVY):-0.576
