@@ -1,3 +1,4 @@
+import math
 from .base import EncodingStrategy
 
 class RotatingStrategy(EncodingStrategy):
@@ -7,23 +8,30 @@ class RotatingStrategy(EncodingStrategy):
         if not binary_data:
             return ""
         
-        # Preserve length by prepending '1'
+        # Calculate fixed length to ensure random access works
+        L = len(binary_data)
+        # We encode '1' + binary. Total bits = L + 1.
+        # Max value < 2^(L+1).
+        # Trits needed = ceil((L + 1) * log(2) / log(3))
+        num_trits = math.ceil((L + 1) * math.log(2) / math.log(3))
+        
         val = int('1' + binary_data, 2)
         
         trits = []
         while val > 0:
             trits.append(val % 3)
             val //= 3
+            
+        # Pad with leading zeros to meet fixed length
+        while len(trits) < num_trits:
+            trits.append(0)
+            
         trits.reverse()
         
         dna = []
         prev_idx = 0 # Assume previous was A (index 0) implied
         
         for t in trits:
-            # t is 0, 1, 2.
-            # 0 -> +1 offset (A->C)
-            # 1 -> +2 offset (A->G)
-            # 2 -> +3 offset (A->T)
             idx = (prev_idx + 1 + t) % 4
             dna.append(self.BASES[idx])
             prev_idx = idx
