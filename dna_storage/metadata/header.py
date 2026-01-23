@@ -10,13 +10,13 @@ HEADER_LENGTH_BYTES = 4 # 32-bit integer for header length
 
 class MetadataManager:
     @staticmethod
-    def create_header_dna(ecc_method, ecc_params, chunk_size, total_chunks, constraints=None):
+    def create_header_dna(ecc_method, ecc_params, chunk_size, total_chunks, constraints=None, encoding_name='baseline'):
         """
         Creates the DNA sequence for the header.
         """
         metadata = {
-            "version": "1.1",
-            "encoding": "binary_map_2bit",
+            "version": "1.2", # Strategy support
+            "encoding": encoding_name,
             "ecc": ecc_method,
             "ecc_params": ecc_params,
             "chunk_size": chunk_size,

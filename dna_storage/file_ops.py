@@ -4,31 +4,34 @@ from .metadata import MetadataManager
 from .chunking import ChunkManager
 from .constraints import ConstraintValidator
 from .addressing import AddressIndexer
+from .encoding_strategies import get_strategy
 
 class DNAStorage:
-    def __init__(self, ecc_method='rs', nsym=10, chunk_size=128, constraints=None):
+    def __init__(self, ecc_method='rs', nsym=10, chunk_size=128, constraints=None, encoding='baseline'):
         self.ecc_method = ecc_method
         self.nsym = nsym
         self.chunk_size = chunk_size
         self.constraints = constraints or {}
+        self.encoding_name = encoding
+        self.strategy = get_strategy(encoding)
         
     def _encode_body(self, data_bytes):
         """Internal method to encode a single data packet."""
         if self.ecc_method == 'rs':
             encoded_bytes = ECC.rs_encode(data_bytes, self.nsym)
             binary = bytes_to_binary(encoded_bytes)
-            return binary_to_dna_sequence(binary)
         elif self.ecc_method == 'hamming':
             binary = bytes_to_binary(data_bytes)
             encoded_bits = ECC.hamming_encode(binary)
-            return binary_to_dna_sequence(encoded_bits)
+            binary = encoded_bits
         else:
             binary = bytes_to_binary(data_bytes)
-            return binary_to_dna_sequence(binary)
+            
+        return self.strategy.encode(binary)
 
     def _decode_body(self, dna_sequence):
         """Internal method to decode a single data packet."""
-        binary = dna_sequence_to_binary(dna_sequence)
+        binary = self.strategy.decode(dna_sequence)
         
         if self.ecc_method == 'rs':
             data_bytes = binary_to_bytes(binary)
@@ -59,6 +62,8 @@ class DNAStorage:
             self.nsym = params.get('nsym', 10)
         self.chunk_size = metadata.get('chunk_size', 128)
         self.constraints = metadata.get('constraints', {})
+        self.encoding_name = metadata.get('encoding', 'baseline')
+        self.strategy = get_strategy(self.encoding_name)
         
         return total_header_end, metadata
 
@@ -108,7 +113,8 @@ class DNAStorage:
         # 3. Create Header
         ecc_params = {"nsym": self.nsym} if self.ecc_method == 'rs' else {}
         header_dna = MetadataManager.create_header_dna(
-            self.ecc_method, ecc_params, self.chunk_size, len(chunks), self.constraints
+            self.ecc_method, ecc_params, self.chunk_size, len(chunks), 
+            self.constraints, self.encoding_name
         )
         
         # 4. Create Prefix
@@ -124,7 +130,7 @@ class DNAStorage:
         total_chunks = metadata.get('total_chunks', 0)
         
         # Use Indexer
-        indexer = AddressIndexer(self.chunk_size, self.ecc_method, {"nsym": self.nsym})
+        indexer = AddressIndexer(self.chunk_size, self.ecc_method, {"nsym": self.nsym}, self.strategy.bits_per_base())
         
         chunks_data = []
         for i in range(total_chunks):
@@ -154,7 +160,7 @@ class DNAStorage:
         if chunk_index < 0 or chunk_index >= total_chunks:
             raise IndexError("Chunk index out of bounds")
             
-        indexer = AddressIndexer(self.chunk_size, self.ecc_method, {"nsym": self.nsym})
+        indexer = AddressIndexer(self.chunk_size, self.ecc_method, {"nsym": self.nsym}, self.strategy.bits_per_base())
         start, end = indexer.get_chunk_range(chunk_index, total_header_end)
         
         if end > len(dna_sequence):
