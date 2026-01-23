@@ -10,17 +10,18 @@ HEADER_LENGTH_BYTES = 4 # 32-bit integer for header length
 
 class MetadataManager:
     @staticmethod
-    def create_header_dna(ecc_method, ecc_params, chunk_size, total_chunks):
+    def create_header_dna(ecc_method, ecc_params, chunk_size, total_chunks, constraints=None):
         """
         Creates the DNA sequence for the header.
         """
         metadata = {
-            "version": "1.0",
+            "version": "1.1",
             "encoding": "binary_map_2bit",
             "ecc": ecc_method,
             "ecc_params": ecc_params,
             "chunk_size": chunk_size,
-            "total_chunks": total_chunks
+            "total_chunks": total_chunks,
+            "constraints": constraints or {}
         }
         json_bytes = json.dumps(metadata, sort_keys=True).encode('utf-8')
         

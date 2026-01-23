@@ -2,16 +2,17 @@ from .binary_to_dna import bytes_to_binary, binary_to_dna_sequence, dna_sequence
 from .ecc import ECC
 from .metadata import MetadataManager
 from .chunking import ChunkManager
+from .constraints import ConstraintValidator
 
 class DNAStorage:
-    def __init__(self, ecc_method='rs', nsym=10, chunk_size=128):
+    def __init__(self, ecc_method='rs', nsym=10, chunk_size=128, constraints=None):
         self.ecc_method = ecc_method
         self.nsym = nsym
         self.chunk_size = chunk_size
+        self.constraints = constraints or {}
         
     def _encode_body(self, data_bytes):
         """Internal method to encode a single data packet."""
-        # Error Correction
         if self.ecc_method == 'rs':
             encoded_bytes = ECC.rs_encode(data_bytes, self.nsym)
             binary = bytes_to_binary(encoded_bytes)
@@ -41,27 +42,57 @@ class DNAStorage:
         if self.ecc_method == 'rs':
              return (packet_size_bytes + self.nsym) * 4
         elif self.ecc_method == 'hamming':
-             # 1 byte -> 14 bits -> 7 bases
              return packet_size_bytes * 7
         else:
              return packet_size_bytes * 4
 
     def encode(self, data_bytes):
         """
-        Encodes data with chunking and metadata header.
+        Encodes data with chunking, metadata header, and constraint enforcement.
         Structure: [LengthPrefix][HeaderDNA][Chunk1DNA][Chunk2DNA]...
         """
         # 1. Chunk Data
         chunks = ChunkManager.chunk_data(data_bytes, self.chunk_size)
         
-        # 2. Encode Chunks
-        encoded_chunks = [self._encode_body(chunk) for chunk in chunks]
-        body_dna = "".join(encoded_chunks)
+        encoded_chunks_dna = []
+        for chunk in chunks:
+            nonce = 0
+            while True:
+                # If nonce > 0, repack
+                if nonce > 0:
+                    idx, payload, length, _ = ChunkManager.unpack_chunk_components(chunk)
+                    chunk = ChunkManager.pack_chunk(idx, payload, length, nonce)
+                
+                dna = self._encode_body(chunk)
+                
+                # Check Constraints
+                valid = True
+                if self.constraints:
+                    if 'min_gc' in self.constraints:
+                        min_gc = self.constraints.get('min_gc')
+                        max_gc = self.constraints.get('max_gc', 0.6)
+                        if not ConstraintValidator.validate_gc_content(dna, min_gc, max_gc):
+                            valid = False
+                    
+                    if valid and 'max_homopolymer' in self.constraints:
+                        max_hp = self.constraints.get('max_homopolymer', 3)
+                        if not ConstraintValidator.validate_homopolymers(dna, max_hp):
+                            valid = False
+                
+                if valid:
+                    encoded_chunks_dna.append(dna)
+                    break
+                
+                nonce += 1
+                if nonce > 1000:
+                    raise RuntimeError("Failed to satisfy constraints after 1000 attempts")
+        
+        body_dna = "".join(encoded_chunks_dna)
         
         # 3. Create Header
         ecc_params = {"nsym": self.nsym} if self.ecc_method == 'rs' else {}
         header_dna = MetadataManager.create_header_dna(
-            self.ecc_method, ecc_params, self.chunk_size, len(chunks)
+            self.ecc_method, ecc_params, self.chunk_size, len(chunks), self.constraints
         )
         
         # 4. Create Prefix
@@ -96,12 +127,13 @@ class DNAStorage:
             self.nsym = params.get('nsym', 10)
         self.chunk_size = metadata.get('chunk_size', 128)
         total_chunks = metadata.get('total_chunks', 0)
+        self.constraints = metadata.get('constraints', {})
         
         # 4. Decode Chunks
         body_dna = dna_sequence[total_header_end:]
         
-        # Packet size = Header(12) + chunk_size (padded)
-        packet_size = 12 + self.chunk_size
+        # Packet size = Header(16) + chunk_size (padded)
+        packet_size = ChunkManager.HEADER_SIZE + self.chunk_size
         chunk_dna_len = self._calculate_dna_chunk_length(packet_size)
         
         chunks_data = []
@@ -115,7 +147,7 @@ class DNAStorage:
             chunk_segment = body_dna[start:end]
             packet_bytes = self._decode_body(chunk_segment)
             
-            idx, data = ChunkManager.parse_chunk(packet_bytes)
+            idx, data, nonce = ChunkManager.parse_chunk(packet_bytes)
             
             if idx != i:
                 raise ValueError(f"Chunk index mismatch. Expected {i}, got {idx}")
