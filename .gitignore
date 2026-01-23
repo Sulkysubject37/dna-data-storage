@@ -170,3 +170,4 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 dna-storage/
+.DS_Store
