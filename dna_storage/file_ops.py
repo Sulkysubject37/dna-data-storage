@@ -3,6 +3,7 @@ from .ecc import ECC
 from .metadata import MetadataManager
 from .chunking import ChunkManager
 from .constraints import ConstraintValidator
+from .addressing import AddressIndexer
 
 class DNAStorage:
     def __init__(self, ecc_method='rs', nsym=10, chunk_size=128, constraints=None):
@@ -38,13 +39,28 @@ class DNAStorage:
         else:
             return binary_to_bytes(binary)
 
-    def _calculate_dna_chunk_length(self, packet_size_bytes):
+    def _parse_header_and_configure(self, dna_sequence):
+        prefix_len = 16 
+        if len(dna_sequence) < prefix_len:
+            raise ValueError("Data too short to contain header prefix")
+        prefix_dna = dna_sequence[:prefix_len]
+        header_len = MetadataManager.decode_length_prefix(prefix_dna)
+        
+        total_header_end = prefix_len + header_len
+        if len(dna_sequence) < total_header_end:
+             raise ValueError("Data too short to contain header")
+             
+        header_dna = dna_sequence[prefix_len:total_header_end]
+        metadata = MetadataManager.parse_header_dna(header_dna)
+        
+        self.ecc_method = metadata.get('ecc', 'rs')
+        params = metadata.get('ecc_params', {})
         if self.ecc_method == 'rs':
-             return (packet_size_bytes + self.nsym) * 4
-        elif self.ecc_method == 'hamming':
-             return packet_size_bytes * 7
-        else:
-             return packet_size_bytes * 4
+            self.nsym = params.get('nsym', 10)
+        self.chunk_size = metadata.get('chunk_size', 128)
+        self.constraints = metadata.get('constraints', {})
+        
+        return total_header_end, metadata
 
     def encode(self, data_bytes):
         """
@@ -104,47 +120,19 @@ class DNAStorage:
         """
         Decodes data, parsing header and reassembling chunks.
         """
-        # 1. Parse Prefix
-        prefix_len = 16 
-        if len(dna_sequence) < prefix_len:
-            raise ValueError("Data too short to contain header prefix")
-            
-        prefix_dna = dna_sequence[:prefix_len]
-        header_len = MetadataManager.decode_length_prefix(prefix_dna)
-        
-        # 2. Parse Header
-        total_header_end = prefix_len + header_len
-        if len(dna_sequence) < total_header_end:
-             raise ValueError("Data too short to contain header")
-             
-        header_dna = dna_sequence[prefix_len:total_header_end]
-        metadata = MetadataManager.parse_header_dna(header_dna)
-        
-        # 3. Configure from Metadata
-        self.ecc_method = metadata.get('ecc', 'rs')
-        params = metadata.get('ecc_params', {})
-        if self.ecc_method == 'rs':
-            self.nsym = params.get('nsym', 10)
-        self.chunk_size = metadata.get('chunk_size', 128)
+        total_header_end, metadata = self._parse_header_and_configure(dna_sequence)
         total_chunks = metadata.get('total_chunks', 0)
-        self.constraints = metadata.get('constraints', {})
         
-        # 4. Decode Chunks
-        body_dna = dna_sequence[total_header_end:]
-        
-        # Packet size = Header(16) + chunk_size (padded)
-        packet_size = ChunkManager.HEADER_SIZE + self.chunk_size
-        chunk_dna_len = self._calculate_dna_chunk_length(packet_size)
+        # Use Indexer
+        indexer = AddressIndexer(self.chunk_size, self.ecc_method, {"nsym": self.nsym})
         
         chunks_data = []
         for i in range(total_chunks):
-            start = i * chunk_dna_len
-            end = start + chunk_dna_len
-            
-            if end > len(body_dna):
+            start, end = indexer.get_chunk_range(i, total_header_end)
+            if end > len(dna_sequence):
                 raise ValueError("Unexpected end of stream (missing chunks)")
             
-            chunk_segment = body_dna[start:end]
+            chunk_segment = dna_sequence[start:end]
             packet_bytes = self._decode_body(chunk_segment)
             
             idx, data, nonce = ChunkManager.parse_chunk(packet_bytes)
@@ -155,3 +143,28 @@ class DNAStorage:
             chunks_data.append(data)
             
         return b"".join(chunks_data)
+
+    def decode_chunk(self, dna_sequence, chunk_index):
+        """
+        Decodes a specific chunk from the DNA sequence.
+        """
+        total_header_end, metadata = self._parse_header_and_configure(dna_sequence)
+        total_chunks = metadata.get('total_chunks', 0)
+        
+        if chunk_index < 0 or chunk_index >= total_chunks:
+            raise IndexError("Chunk index out of bounds")
+            
+        indexer = AddressIndexer(self.chunk_size, self.ecc_method, {"nsym": self.nsym})
+        start, end = indexer.get_chunk_range(chunk_index, total_header_end)
+        
+        if end > len(dna_sequence):
+            raise ValueError("Chunk data incomplete or missing")
+            
+        chunk_segment = dna_sequence[start:end]
+        packet_bytes = self._decode_body(chunk_segment)
+        idx, data, nonce = ChunkManager.parse_chunk(packet_bytes)
+        
+        if idx != chunk_index:
+             raise ValueError("Index mismatch in random access")
+             
+        return data
