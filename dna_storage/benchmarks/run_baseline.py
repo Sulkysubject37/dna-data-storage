@@ -3,6 +3,7 @@ import time
 import statistics
 import json
 import csv
+import argparse
 from dna_storage.file_ops import DNAStorage
 
 class BenchmarkRunner:
@@ -66,18 +67,29 @@ class BenchmarkRunner:
             "success": True
         }
 
-    def run_all(self):
+    def run_all(self, tier='small'):
         if not os.path.exists(self.test_dir):
             print(f"Test directory {self.test_dir} not found.")
             return
 
-        # Skip README and large MP4s for baseline speed
-        files = [f for f in os.listdir(self.test_dir) 
-                 if os.path.isfile(os.path.join(self.test_dir, f)) 
-                 and f != 'README.md' 
-                 and not f.endswith('.mp4')]
+        files = []
+        for f in os.listdir(self.test_dir):
+            path = os.path.join(self.test_dir, f)
+            if not os.path.isfile(path) or f == 'README.md':
+                continue
+            
+            size = os.path.getsize(path)
+            is_large = size > 1024 * 1024 # 1MB cutoff
+            
+            if tier == 'small' and is_large:
+                continue
+            if tier == 'large' and not is_large:
+                continue
+                
+            files.append(f)
+            
         files.sort()
-        print(f"Found {len(files)} files in {self.test_dir}")
+        print(f"Found {len(files)} files in {self.test_dir} (Tier: {tier})")
         
         for f in files:
             print(f"Benchmarking {f}...")
@@ -89,6 +101,10 @@ class BenchmarkRunner:
                 self.results.append({"filename": f, "success": False, "error": str(e)})
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--tier', choices=['small', 'large', 'all'], default='small', help='Baseline tier: small (<=1MB), large (>1MB), or all')
+    args = parser.parse_args()
+    
     runner = BenchmarkRunner()
-    runner.run_all()
+    runner.run_all(args.tier)
     print(f"Completed {len(runner.results)} benchmarks.")
