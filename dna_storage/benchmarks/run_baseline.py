@@ -75,7 +75,7 @@ class BenchmarkRunner:
         files = []
         for f in os.listdir(self.test_dir):
             path = os.path.join(self.test_dir, f)
-            if not os.path.isfile(path) or f == 'README.md':
+            if not os.path.isfile(path) or f == 'README.md' or f.endswith('.mp4'):
                 continue
             
             size = os.path.getsize(path)

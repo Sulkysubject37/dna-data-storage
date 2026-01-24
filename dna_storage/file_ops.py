@@ -34,6 +34,9 @@ class DNAStorage:
                 return dna_native.hamming_encode_dna(data_bytes)
             elif self.ecc_method == 'rs':
                 encoded_bytes = ECC.rs_encode(data_bytes, self.nsym)
+                # reedsolo returns bytearray
+                if isinstance(encoded_bytes, bytearray):
+                    encoded_bytes = bytes(encoded_bytes)
                 return dna_native.binary_to_dna(encoded_bytes)
             else:
                 return dna_native.binary_to_dna(data_bytes)
@@ -115,7 +118,7 @@ class DNAStorage:
                 
                 dna = self._encode_body(chunk)
                 
-                # Check Constraints (Always Python for now)
+                # Check Constraints
                 valid = True
                 if self.constraints:
                     if 'min_gc' in self.constraints:
