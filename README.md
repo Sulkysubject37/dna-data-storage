@@ -25,6 +25,11 @@ This project demonstrates the principles of encoding digital data into DNA seque
     pip install -r requirements.txt
     ```
 
+3.  **Build C++ Core (Optional):**
+    ```bash
+    ./scripts/build_cpp.sh
+    ```
+
 ## Usage
 
 ### Interactive CLI
@@ -36,7 +41,8 @@ python -m dna_storage.interactive_cli
 ```python
 from dna_storage.file_ops import DNAStorage
 
-storage = DNAStorage(ecc_method='rs', nsym=10)
+# Use C++ backend for performance (requires build)
+storage = DNAStorage(ecc_method='hamming', backend='cpp')
 encoded_dna = storage.encode(b"Hello World")
 decoded_data = storage.decode(encoded_dna)
 ```
@@ -66,6 +72,10 @@ python -m dna_storage.benchmarks.run_baseline --tier small
 - **Baseline Benchmarking**: Focuses on correctness and single-threaded performance using fixed parameters. These results are recorded in `dna_storage/benchmarks/results/` and serve as a pre-optimization reference.
 - **Scaling Experiments**: (Planned) Will focus on throughput, parallelization, and large-scale data handling.
 
+## Performance
+A native C++ backend is available for high-performance encoding/decoding.
+See `docs/native_core.md` for details.
+
 ## Testing
 Run unit tests:
 ```bash
@@ -75,4 +85,4 @@ python -m unittest discover tests
 ## Limitations
 - **No Wet-Lab Support**: This is a computational simulation. It does not interface with synthesizers or sequencers.
 - **ECC Constraints**: Hamming code handles single-bit errors only. RS handles burst errors but has limits.
-- **Performance**: Optimized for correctness and clarity, not speed.
+- **Performance**: Optimized for correctness and clarity, not speed (unless C++ backend is used).
