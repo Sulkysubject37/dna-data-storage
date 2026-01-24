@@ -4,10 +4,10 @@ import os
 import uuid
 
 class RunManifest:
-    def __init__(self, run_dir="runs"):
-        self.run_dir = run_dir
-        os.makedirs(run_dir, exist_ok=True)
+    def __init__(self, base_dir="runs"):
         self.run_id = time.strftime("%Y%m%d_%H%M%S") + "_" + str(uuid.uuid4())[:8]
+        self.run_dir = os.path.join(base_dir, self.run_id)
+        os.makedirs(self.run_dir, exist_ok=True)
         self.config = {}
         self.stats = {}
         
@@ -17,8 +17,11 @@ class RunManifest:
     def set_stats(self, **kwargs):
         self.stats.update(kwargs)
         
+    def get_file_path(self, filename):
+        return os.path.join(self.run_dir, filename)
+        
     def save(self):
-        filename = os.path.join(self.run_dir, f"run_{self.run_id}.json")
+        filename = os.path.join(self.run_dir, "manifest.json")
         data = {
             "run_id": self.run_id,
             "timestamp": time.time(),
