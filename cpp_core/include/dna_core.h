@@ -21,4 +21,9 @@ namespace dna_core {
     // Decodes DNA -> Hamming Bits -> Data bytes.
     HammingDecodeResult hamming_decode_dna(const std::string& dna);
 
+    // Packed DNA (2-bit per base)
+    // 1 byte stores 4 bases.
+    std::vector<uint8_t> pack_dna(const std::string& dna);
+    std::string unpack_dna(const std::vector<uint8_t>& packed, size_t length);
+
 }

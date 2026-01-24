@@ -38,4 +38,12 @@ PYBIND11_MODULE(dna_native, m) {
     m.def("hamming_decode_dna", [](std::string dna) {
         return dna_core::hamming_decode_dna(dna);
     }, "Hamming Decode (7,4) DNA to bytes");
+
+    m.def("pack_dna", [](std::string dna) {
+        return vector_to_bytes(dna_core::pack_dna(dna));
+    }, "Pack DNA string to 2-bit bytes");
+
+    m.def("unpack_dna", [](py::bytes packed, size_t length) {
+        return dna_core::unpack_dna(bytes_to_vector(packed), length);
+    }, "Unpack 2-bit bytes to DNA string");
 }
