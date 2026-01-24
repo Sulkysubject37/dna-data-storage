@@ -6,17 +6,39 @@ from .constraints import ConstraintValidator
 from .addressing import AddressIndexer
 from .encoding_strategies import get_strategy
 
+try:
+    from .native import dna_native
+    CPP_AVAILABLE = True
+except ImportError:
+    CPP_AVAILABLE = False
+
 class DNAStorage:
-    def __init__(self, ecc_method='rs', nsym=10, chunk_size=128, constraints=None, encoding='baseline'):
+    def __init__(self, ecc_method='rs', nsym=10, chunk_size=128, constraints=None, encoding='baseline', backend='python'):
         self.ecc_method = ecc_method
         self.nsym = nsym
         self.chunk_size = chunk_size
         self.constraints = constraints or {}
         self.encoding_name = encoding
         self.strategy = get_strategy(encoding)
+        self.backend = backend
+        
+        if backend == 'cpp' and not CPP_AVAILABLE:
+            print("Warning: C++ backend requested but not available. Falling back to Python.")
+            self.backend = 'python'
         
     def _encode_body(self, data_bytes):
         """Internal method to encode a single data packet."""
+        # C++ Fast Path
+        if self.backend == 'cpp' and self.encoding_name == 'baseline':
+            if self.ecc_method == 'hamming':
+                return dna_native.hamming_encode_dna(data_bytes)
+            elif self.ecc_method == 'rs':
+                encoded_bytes = ECC.rs_encode(data_bytes, self.nsym)
+                return dna_native.binary_to_dna(encoded_bytes)
+            else:
+                return dna_native.binary_to_dna(data_bytes)
+        
+        # Python Path
         if self.ecc_method == 'rs':
             encoded_bytes = ECC.rs_encode(data_bytes, self.nsym)
             binary = bytes_to_binary(encoded_bytes)
@@ -31,6 +53,18 @@ class DNAStorage:
 
     def _decode_body(self, dna_sequence):
         """Internal method to decode a single data packet."""
+        # C++ Fast Path
+        if self.backend == 'cpp' and self.encoding_name == 'baseline':
+            if self.ecc_method == 'hamming':
+                res = dna_native.hamming_decode_dna(dna_sequence)
+                return res.data
+            elif self.ecc_method == 'rs':
+                data_bytes = dna_native.dna_to_binary(dna_sequence)
+                return ECC.rs_decode(data_bytes, self.nsym)
+            else:
+                return dna_native.dna_to_binary(dna_sequence)
+
+        # Python Path
         binary = self.strategy.decode(dna_sequence)
         
         if self.ecc_method == 'rs':
@@ -68,10 +102,6 @@ class DNAStorage:
         return total_header_end, metadata
 
     def encode(self, data_bytes):
-        """
-        Encodes data with chunking, metadata header, and constraint enforcement.
-        Structure: [LengthPrefix][HeaderDNA][Chunk1DNA][Chunk2DNA]...
-        """
         # 1. Chunk Data
         chunks = ChunkManager.chunk_data(data_bytes, self.chunk_size)
         
@@ -79,14 +109,13 @@ class DNAStorage:
         for chunk in chunks:
             nonce = 0
             while True:
-                # If nonce > 0, repack
                 if nonce > 0:
                     idx, payload, length, _ = ChunkManager.unpack_chunk_components(chunk)
                     chunk = ChunkManager.pack_chunk(idx, payload, length, nonce)
                 
                 dna = self._encode_body(chunk)
                 
-                # Check Constraints
+                # Check Constraints (Always Python for now)
                 valid = True
                 if self.constraints:
                     if 'min_gc' in self.constraints:
@@ -94,7 +123,6 @@ class DNAStorage:
                         max_gc = self.constraints.get('max_gc', 0.6)
                         if not ConstraintValidator.validate_gc_content(dna, min_gc, max_gc):
                             valid = False
-                    
                     if valid and 'max_homopolymer' in self.constraints:
                         max_hp = self.constraints.get('max_homopolymer', 3)
                         if not ConstraintValidator.validate_homopolymers(dna, max_hp):
@@ -123,13 +151,9 @@ class DNAStorage:
         return prefix_dna + header_dna + body_dna
 
     def decode(self, dna_sequence):
-        """
-        Decodes data, parsing header and reassembling chunks.
-        """
         total_header_end, metadata = self._parse_header_and_configure(dna_sequence)
         total_chunks = metadata.get('total_chunks', 0)
         
-        # Use Indexer
         indexer = AddressIndexer(self.chunk_size, self.ecc_method, {"nsym": self.nsym}, self.strategy.bits_per_base())
         
         chunks_data = []
@@ -151,9 +175,6 @@ class DNAStorage:
         return b"".join(chunks_data)
 
     def decode_chunk(self, dna_sequence, chunk_index):
-        """
-        Decodes a specific chunk from the DNA sequence.
-        """
         total_header_end, metadata = self._parse_header_and_configure(dna_sequence)
         total_chunks = metadata.get('total_chunks', 0)
         

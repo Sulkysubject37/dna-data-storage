@@ -1,0 +1,4 @@
+File: f_test/NL.pdf
+Python: 45.9469s
+C++:    0.4194s
+Speedup: 109.56x
