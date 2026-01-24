@@ -4,12 +4,10 @@
 
 namespace py = pybind11;
 
-// Helper to convert string (from py::bytes) to vector
 std::vector<uint8_t> bytes_to_vector(const std::string& s) {
     return std::vector<uint8_t>(s.begin(), s.end());
 }
 
-// Helper to convert vector to bytes
 py::bytes vector_to_bytes(const std::vector<uint8_t>& v) {
     return py::bytes(reinterpret_cast<const char*>(v.data()), v.size());
 }
@@ -46,4 +44,27 @@ PYBIND11_MODULE(dna_native, m) {
     m.def("unpack_dna", [](py::bytes packed, size_t length) {
         return dna_core::unpack_dna(bytes_to_vector(packed), length);
     }, "Unpack 2-bit bytes to DNA string");
+
+    // Batch APIs with GIL release
+    m.def("hamming_encode_batch", [](const std::vector<py::bytes>& batch, int threads) {
+        std::vector<std::vector<uint8_t>> cpp_batch;
+        cpp_batch.reserve(batch.size());
+        for (const auto& b : batch) cpp_batch.push_back(bytes_to_vector(b));
+        
+        std::vector<std::string> results;
+        {
+            py::gil_scoped_release release;
+            results = dna_core::hamming_encode_batch(cpp_batch, threads);
+        }
+        return results;
+    }, "Parallel Hamming Encode", py::arg("batch"), py::arg("threads")=0);
+
+    m.def("hamming_decode_batch", [](const std::vector<std::string>& batch, int threads) {
+        std::vector<dna_core::HammingDecodeResult> results;
+        {
+            py::gil_scoped_release release;
+            results = dna_core::hamming_decode_batch(batch, threads);
+        }
+        return results;
+    }, "Parallel Hamming Decode", py::arg("batch"), py::arg("threads")=0);
 }

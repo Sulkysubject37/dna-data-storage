@@ -1,6 +1,9 @@
 #include "dna_core.h"
 #include <stdexcept>
 #include <array>
+#include <future>
+#include <thread>
+#include <algorithm>
 
 namespace dna_core {
 
@@ -102,19 +105,12 @@ namespace dna_core {
             uint8_t h = encode_nibble((b >> 4) & 0xF);
             uint8_t l = encode_nibble(b & 0xF);
             
-            // H6 H5
             dna.push_back(BIN_TO_DNA[(h >> 5) & 0x3]);
-            // H4 H3
             dna.push_back(BIN_TO_DNA[(h >> 3) & 0x3]);
-            // H2 H1
             dna.push_back(BIN_TO_DNA[(h >> 1) & 0x3]);
-            // H0 L6
             dna.push_back(BIN_TO_DNA[((h & 1) << 1) | ((l >> 6) & 1)]);
-            // L5 L4
             dna.push_back(BIN_TO_DNA[(l >> 4) & 0x3]);
-            // L3 L2
             dna.push_back(BIN_TO_DNA[(l >> 2) & 0x3]);
-            // L1 L0
             dna.push_back(BIN_TO_DNA[l & 0x3]);
         }
         return dna;
@@ -168,7 +164,6 @@ namespace dna_core {
             }
         }
         if (bits > 0) {
-            // Left-align remaining bits
             acc <<= (8 - bits);
             packed.push_back(acc);
         }
@@ -189,6 +184,56 @@ namespace dna_core {
             }
         }
         return dna;
+    }
+
+    std::vector<std::string> hamming_encode_batch(const std::vector<std::vector<uint8_t>>& batch, int threads) {
+        if (threads <= 0) threads = std::thread::hardware_concurrency();
+        if (threads == 0) threads = 1;
+        
+        std::vector<std::string> results(batch.size());
+        std::vector<std::future<void>> futures;
+        
+        auto worker = [&](size_t start, size_t end) {
+            for (size_t i = start; i < end; ++i) {
+                results[i] = hamming_encode_dna(batch[i]);
+            }
+        };
+        
+        size_t chunk_size = (batch.size() + threads - 1) / threads;
+        for (int i = 0; i < threads; ++i) {
+            size_t start = i * chunk_size;
+            size_t end = std::min(start + chunk_size, batch.size());
+            if (start >= end) break;
+            futures.push_back(std::async(std::launch::async, worker, start, end));
+        }
+        
+        for (auto& f : futures) f.wait();
+        return results;
+    }
+
+    std::vector<HammingDecodeResult> hamming_decode_batch(const std::vector<std::string>& batch, int threads) {
+        if (threads <= 0) threads = std::thread::hardware_concurrency();
+        if (threads == 0) threads = 1;
+        
+        std::vector<HammingDecodeResult> results(batch.size());
+        std::vector<std::future<void>> futures;
+        
+        auto worker = [&](size_t start, size_t end) {
+            for (size_t i = start; i < end; ++i) {
+                results[i] = hamming_decode_dna(batch[i]);
+            }
+        };
+        
+        size_t chunk_size = (batch.size() + threads - 1) / threads;
+        for (int i = 0; i < threads; ++i) {
+            size_t start = i * chunk_size;
+            size_t end = std::min(start + chunk_size, batch.size());
+            if (start >= end) break;
+            futures.push_back(std::async(std::launch::async, worker, start, end));
+        }
+        
+        for (auto& f : futures) f.wait();
+        return results;
     }
 
 }
