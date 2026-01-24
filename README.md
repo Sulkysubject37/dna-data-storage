@@ -76,6 +76,11 @@ python -m dna_storage.benchmarks.run_baseline --tier small
 A native C++ backend is available for high-performance encoding/decoding.
 See `docs/native_core.md` for details.
 
+## License
+This project is licensed under the **PolyForm Noncommercial License 1.0.0**. 
+
+**Noncommercial use only.** For commercial inquiries, quotes, or royalty agreements, please contact the copyright holder.
+
 ## Testing
 Run unit tests:
 ```bash
