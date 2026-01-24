@@ -1,13 +1,13 @@
 import struct
 import zlib
 import random
+from ..failures import DNAStorageError, FailureType
 
 class ChunkManager:
     HEADER_FORMAT = "!IIII" # Index (4), Length (4), Checksum (4), Nonce (4)
     HEADER_SIZE = struct.calcsize(HEADER_FORMAT)
     
     # Fixed mask to whiten header (break homopolymers in Index/Length)
-    # Generated with random.Random(42).randbytes(16)
     HEADER_MASK = b'd\x1d\x8c\xd9\x8f\x00\xb2\x04\xe9\x80\t\x98\xec\xf8B~'
 
     @staticmethod
@@ -98,7 +98,7 @@ class ChunkManager:
         payload = packet_bytes[ChunkManager.HEADER_SIZE:]
         
         if zlib.crc32(payload) != checksum:
-            raise ValueError(f"Checksum mismatch in chunk {index}")
+            raise DNAStorageError(f"Checksum mismatch in chunk {index}", FailureType.CORRUPTION_DETECTED)
             
         unscrambled = ChunkManager._apply_scramble(payload, nonce)
         return index, unscrambled[:length], nonce
