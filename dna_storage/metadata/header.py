@@ -15,7 +15,7 @@ class MetadataManager:
         Creates the DNA sequence for the header.
         """
         metadata = {
-            "version": "1.2", # Strategy support
+            "version": "1.2-delta", # Strategy support
             "encoding": encoding_name,
             "ecc": ecc_method,
             "ecc_params": ecc_params,
