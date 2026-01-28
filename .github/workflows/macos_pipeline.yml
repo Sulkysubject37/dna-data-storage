@@ -1,0 +1,58 @@
+name: macOS Pipeline
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  test-macos:
+    runs-on: macos-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.10"
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest
+
+    - name: Build C++ Backend
+      run: bash scripts/build_cpp.sh
+
+    - name: Prepare Test Data
+      run: |
+        mkdir -p test_inputs
+        # Fetch external file
+        curl -o test_inputs/sherlock.txt https://www.gutenberg.org/files/1661/1661-0.txt
+        # Copy internal files
+        cp "f_test/NL.pdf" test_inputs/ || echo "NL.pdf not found"
+        cp "f_test/you're a star.mp3" test_inputs/ || echo "mp3 not found"
+
+    - name: Run Pipeline (Python Backend)
+      run: python scripts/run_ci_pipeline.py --input-dir test_inputs --output-dir artifacts/python --backend python
+
+    - name: Run Pipeline (C++ Backend)
+      run: python scripts/run_ci_pipeline.py --input-dir test_inputs --output-dir artifacts/cpp --backend cpp
+
+    - name: Consolidate Reports
+      run: |
+        echo "# macOS Throughput Report" > artifacts/report_summary.md
+        echo "## Python Backend" >> artifacts/report_summary.md
+        cat artifacts/python/throughput_report.md >> artifacts/report_summary.md
+        echo "" >> artifacts/report_summary.md
+        echo "## C++ Backend" >> artifacts/report_summary.md
+        cat artifacts/cpp/throughput_report.md >> artifacts/report_summary.md
+
+    - name: Upload Artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: macos-pipeline-results
+        path: artifacts/
